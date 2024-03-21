@@ -2,6 +2,9 @@
 
 const Video = require('../modules/frontend/video')
 const Store = require('electron-store')
+const Frontend = require('../modules/frontend/frontend')
+
+const frontend = new Frontend()
 const video = new Video()
 const store = new Store()
 
@@ -24,7 +27,10 @@ exitBtn = container.querySelector('.exit-video'),
 pictureInPicture = container.querySelector('.pic-in-pic'),
 volumeBtn = container.querySelector(".volume i"),
 settingsBtn = container.querySelector(".settings i"),
+listEpisodeBtn = container.querySelector(".current-episodes-list i"),
+eachEpisodeList = document.querySelector('.ep_list_content');
 settingsOptions = container.querySelector(".settings-options"),
+listEpisodeOptions = container.querySelector(".ep_list_text"),
 volumeRange = container.querySelector(".volume input"),
 playbackSelect = container.querySelector(".playback select"),
 introSkipTime = container.querySelector(".intro-skip-time select"),
@@ -92,6 +98,9 @@ const hideControls = () => {
     if (settingsOptions.classList.contains("show-options"))
         return
 
+    if (listEpisodeOptions.classList.contains("ep_list_list"))
+        return
+
     timer = setTimeout(() => {
         container.classList.remove("show-controls")
         shadowControls.classList.remove('show-cursor')
@@ -150,6 +159,9 @@ const showPauseInfo = () => {
     clearTimeout(pauseTimer)
 
     if (settingsOptions.classList.contains("show-options"))
+        return
+
+    if (listEpisodeOptions.classList.contains("ep_list_list"))
         return
 
     pauseTimer = setTimeout(() => {
@@ -307,6 +319,14 @@ container.addEventListener("click", (event) => {
     settingsOptions.classList.remove('show-options')
 })
 
+container.addEventListener("click", (event) => {
+    // do not hide if press settings icon or settings options
+    if (event.target == listEpisodeBtn) return
+    if (event.target.closest('.ep_list_text')) return
+
+    listEpisodeOptions.classList.remove('ep_list_list')
+})
+
 // fullscreen when double click
 mainVideo.addEventListener('dblclick', (event) => {
     if (event.target !== event.currentTarget) return;
@@ -340,6 +360,32 @@ nextEpisodeBtn.addEventListener("click", async () => {
 settingsBtn.addEventListener("click", () => {
     settingsOptions.classList.toggle("show-options")
 })
+
+listEpisodeBtn.addEventListener("click", async () => {
+    var entry = localStorage.getItem('seasonInfo')
+    if (entry !== null) {
+        const seasonInfo = JSON.parse(entry);
+        if (Object.keys(seasonInfo).length !== 0) {
+            await frontend.getSeasonEpisodeList({ animeId: parseInt(seasonInfo.animeId), episode: parseInt(seasonInfo.episodeId) });
+        }
+    }
+    listEpisodeOptions.classList.toggle("ep_list_list");
+})
+
+eachEpisodeList.addEventListener('click', async (e) => {
+    if (e.target.matches('li')) {
+        const { episode } = e.target.dataset;
+        let episodeId = 0;
+        let animeId = 0;
+        if (episode) {
+            episodeId = episode.split('-')[0]
+            animeId = episode.split('-')[1]
+        }
+        listEpisodeOptions.classList.toggle("ep_list_list");
+        video.playThisEpisode(animeId, episodeId);
+    }
+})
+
 
 /* trigger auto updating episode when the user reaches the 80% of the anime */
 mainVideo.addEventListener('timeupdate', () => {
