@@ -34,15 +34,18 @@ module.exports = class Requests {
      * @throws error if the request was not successful
      */
     async makeRequest(method, url, headers = {}, options = {}) {
-        const response = await axios({
-            method: method,
-            url: url,
-            headers: headers,
-            data: options
-        })
-
-        // console.log(response)
-
-        return response.data
+        let response = null;
+        try {
+            response = await await axios({
+                method: method,
+                url: url,
+                headers: headers,
+                data: options
+            });
+        } catch (err) {
+            response = err.response;
+        } finally {
+            return response.data;
+        }
     }
 }

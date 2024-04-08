@@ -6,6 +6,7 @@ const Gogoanime = require('../providers/gogoanime')
 const AnimeSaturn = require('../providers/animesaturn')
 const AniListAPI = require('../anilist/anilistApi')
 const animeCustomTitles = require('../animeCustomTitles')
+const AniSkipAPI = require('../skip/aniSkipApi')
 
 /**
  * Methods for video playing and functionalities
@@ -20,6 +21,7 @@ module.exports = class Video {
     constructor() {
         this.store = new Store()
         this.anilist = new AniListAPI()
+        this.skipAPI = new AniSkipAPI()
 
         this.body = document.querySelector('body')
         this.container = document.querySelector(".container")
@@ -39,6 +41,7 @@ module.exports = class Video {
         this.dynamicSettingsLanguage = document.getElementById('dynamic-settings-language')
         this.dynamicSettingsDubbed = document.getElementById('dynamic-settings-dubbed')
         this.dynamicSettingsAutoNext = document.getElementById('dynamic-settings-auto-next')
+        this.dynamicSettingsAutoSkip = document.getElementById('dynamic-settings-auto-skip')
         this.dynamicSettingsUpdateProgress = document.getElementById('dynamic-settings-update-progress')
     }
 
@@ -103,6 +106,10 @@ module.exports = class Video {
             ? this.dynamicSettingsAutoNext.checked = true
             : this.dynamicSettingsAutoNext.checked = false
 
+        this.store.get('auto-skip') == true
+            ? this.dynamicSettingsAutoSkip.checked = true
+            : this.dynamicSettingsAutoSkip.checked = false
+
         this.store.get('update_progress')
             ? this.dynamicSettingsUpdateProgress.checked = true
             : this.dynamicSettingsUpdateProgress.checked = false
@@ -151,8 +158,9 @@ module.exports = class Video {
         // play episode if source is found, otherwise hide video player
         if (videoSource !== -1) {
 
+            const res = await this.skipAPI.getAnimeSkipTime(animeId, episodeId, 0);
             // store current animeID and episodeId for listing currently playing anime episodes and highlight currently playing
-            localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId }));
+            localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId, skipData: res }));
 
             this.displayDynamicSettingsOptions()
 
@@ -213,8 +221,9 @@ module.exports = class Video {
         let animeTitles = this.getParsedAnimeTitles()
         const customTitle = animeCustomTitles[this.store.get('source_flag')][animeId]
 
+        const res = await this.skipAPI.getAnimeSkipTime(animeId, episodeId, 0);
         // "update list when user goes to next ep" store current animeID and episodeId for listing currently playing anime episodes and highlight currently playing
-        localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId }));
+        localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId, skipData: res }));
 
         this.videoElement.src = null
         this.nextEpisodeBtn.classList.add('show-next-episode-btn')
@@ -252,8 +261,9 @@ module.exports = class Video {
         let animeTitles = this.getParsedAnimeTitles()
         const customTitle = animeCustomTitles[this.store.get('source_flag')][animeId]
 
+        const res = await this.skipAPI.getAnimeSkipTime(animeId, episodeId, 0);
         // "update list when user goes to next ep" store current animeID and episodeId for listing currently playing anime episodes and highlight currently playing
-        localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId }));
+        localStorage.setItem("seasonInfo", JSON.stringify({ animeId, episodeId, skipData: res }));
 
         this.videoElement.src = null
         this.nextEpisodeBtn.classList.add('show-next-episode-btn')

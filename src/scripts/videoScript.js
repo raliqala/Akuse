@@ -10,41 +10,42 @@ const store = new Store()
 
 const container = document.querySelector(".container")
 const shadowControls = container.getElementsByClassName('shadow-controls')[0],
-mainVideo = document.getElementById("video"),
-videoTitle = document.getElementById('video-title'),
-videoEpisodeTitle = document.getElementById('video-episode-title'),
-videoTimeline = container.querySelector(".video-timeline"),
-progressBar = container.querySelector(".video-progress-bar"),
-currentVidTime = container.querySelector(".current-time"),
-videoDuration = container.querySelector(".video-duration"),
-skipBackward = container.querySelector(".skip-backward i"),
-skipForward = container.querySelector(".skip-forward i"),
-skipForwardSmall = container.querySelector(".skip-forward-small i"),
-skipForwardSmallText = container.querySelector(".skip-forward-small span"),
-playPauseBtn = container.querySelector(".play-pause i"),
-nextEpisodeBtn = container.querySelector(".next"),
-exitBtn = container.querySelector('.exit-video'),
-pictureInPicture = container.querySelector('.pic-in-pic'),
-volumeBtn = container.querySelector(".volume i"),
-settingsBtn = container.querySelector(".settings i"),
-listEpisodeBtn = container.querySelector(".current-episodes-list i"),
-eachEpisodeList = document.querySelector('.ep_list_content');
+    mainVideo = document.getElementById("video"),
+    videoTitle = document.getElementById('video-title'),
+    videoEpisodeTitle = document.getElementById('video-episode-title'),
+    videoTimeline = container.querySelector(".video-timeline"),
+    progressBar = container.querySelector(".video-progress-bar"),
+    currentVidTime = container.querySelector(".current-time"),
+    videoDuration = container.querySelector(".video-duration"),
+    skipBackward = container.querySelector(".skip-backward i"),
+    skipForward = container.querySelector(".skip-forward i"),
+    skipForwardSmall = container.querySelector(".skip-forward-small i"),
+    skipForwardSmallText = container.querySelector(".skip-forward-small span"),
+    playPauseBtn = container.querySelector(".play-pause i"),
+    nextEpisodeBtn = container.querySelector(".next"),
+    exitBtn = container.querySelector('.exit-video'),
+    pictureInPicture = container.querySelector('.pic-in-pic'),
+    volumeBtn = container.querySelector(".volume i"),
+    settingsBtn = container.querySelector(".settings i"),
+    listEpisodeBtn = container.querySelector(".current-episodes-list i"),
+    eachEpisodeList = document.querySelector('.ep_list_content');
 settingsOptions = container.querySelector(".settings-options"),
-listEpisodeOptions = container.querySelector(".ep_list_text"),
-volumeRange = container.querySelector(".volume input"),
-playbackSelect = container.querySelector(".playback select"),
-introSkipTime = container.querySelector(".intro-skip-time select"),
-fullScreenBtn = container.querySelector(".fullscreen i"),
-// dynamic video settings options
-dynamicSettingsUpdateProgress = document.getElementById('dynamic-settings-update-progress'),
-dynamicSettingsUpdateProgressSlider = document.getElementById('dynamic-settings-update-progress-slider'),
-dynamicSettingsDubbed = document.getElementById('dynamic-settings-dubbed'),
-dynamicSettingsAutoNext = document.getElementById('dynamic-settings-auto-next'),
-dynamicSettingsLanguage = document.getElementById('dynamic-settings-language'),
-// settings options
-updateProgressCheckbox = document.getElementById('update-progress-checkbox'),
-dubbedCheckbox = document.getElementById('dubbed-checkbox'),
-languageSelect = document.getElementById('language-select')
+    listEpisodeOptions = container.querySelector(".ep_list_text"),
+    volumeRange = container.querySelector(".volume input"),
+    playbackSelect = container.querySelector(".playback select"),
+    introSkipTime = container.querySelector(".intro-skip-time select"),
+    fullScreenBtn = container.querySelector(".fullscreen i"),
+    // dynamic video settings options
+    dynamicSettingsUpdateProgress = document.getElementById('dynamic-settings-update-progress'),
+    dynamicSettingsUpdateProgressSlider = document.getElementById('dynamic-settings-update-progress-slider'),
+    dynamicSettingsDubbed = document.getElementById('dynamic-settings-dubbed'),
+    dynamicSettingsAutoNext = document.getElementById('dynamic-settings-auto-next'),
+    dynamicSettingsAutoSkip = document.getElementById('dynamic-settings-auto-skip'),
+    dynamicSettingsLanguage = document.getElementById('dynamic-settings-language'),
+    // settings options
+    updateProgressCheckbox = document.getElementById('update-progress-checkbox'),
+    dubbedCheckbox = document.getElementById('dubbed-checkbox'),
+    languageSelect = document.getElementById('language-select')
 
 // variables
 let timer
@@ -145,6 +146,12 @@ dynamicSettingsAutoNext.addEventListener('change', () => {
         : store.set('auto-next', false)
 })
 
+dynamicSettingsAutoSkip.addEventListener('change', () => {
+    dynamicSettingsAutoSkip.checked == true
+        ? store.set('auto-skip', true)
+        : store.set('auto-skip', false)
+})
+
 dynamicSettingsLanguage.addEventListener('change', () => {
     store.set('source_flag', dynamicSettingsLanguage.value)
 
@@ -240,14 +247,14 @@ mainVideo.addEventListener("timeupdate", () => {
     // if (store.get('logged') == true) {} // NOTE should a user be logged in to track their ep time? 
     // NOTE should this be added in the settings to allow users to choose?
     var entry = localStorage.getItem('seasonInfo')
-        if (entry !== null) {
-            const seasonInfo = JSON.parse(entry);
-            if (Object.keys(seasonInfo).length !== 0) {
-                if (timeTrack !== 0) {
-                    store.set(`episode_${parseInt(seasonInfo.animeId)}-${parseInt(seasonInfo.episodeId)}`, { animeId: parseInt(seasonInfo.animeId), episodeId: parseInt(seasonInfo.episodeId), lastWatchedAt: timeTrack });
-                }
+    if (entry !== null) {
+        const seasonInfo = JSON.parse(entry);
+        if (Object.keys(seasonInfo).length !== 0) {
+            if (timeTrack !== 0) {
+                store.set(`episode_${parseInt(seasonInfo.animeId)}-${parseInt(seasonInfo.episodeId)}`, { animeId: parseInt(seasonInfo.animeId), episodeId: parseInt(seasonInfo.episodeId), lastWatchedAt: timeTrack });
             }
         }
+    }
 })
 
 mainVideo.addEventListener("ended", async () => {
@@ -256,6 +263,39 @@ mainVideo.addEventListener("ended", async () => {
         updated = false
     }
 })
+
+mainVideo.addEventListener("timeupdate", async () => {
+    const videoTime = mainVideo.currentTime !== NaN ? mainVideo.currentTime : 0;
+    if (store.get('auto-skip') == true) {
+        let skipEntry = localStorage.getItem('seasonInfo')
+        if (skipEntry !== null) {
+            const skip = JSON.parse(skipEntry);
+            if (Object.keys(skip).length !== 0) {
+                let skipData = skip.skipData;
+                if (skipData.length) {
+                    autoSkipHandler(videoTime, skipData[0].interval.startTime, skipData[0].interval.endTime, skipData[1].interval.startTime, skipData[1].interval.endTime);
+                }
+            }
+        }
+    }
+})
+
+const autoSkipHandler = (current_time, op_start, op_end, ed_start, ed_end) => {
+    console.log(current_time >= op_start && current_time < op_end);
+    // Check for opening sequence
+    if (current_time >= op_start && current_time < op_end) {
+        mainVideo.currentTime += op_end;
+    }
+    
+    // Check for ending sequence
+    if (current_time >= ed_start && current_time < ed_end) {
+        mainVideo.currentTime += ed_end;
+    }
+}
+
+const getSkipTime = (startTime, endTime) => {
+    return endTime - startTime;
+}
 
 
 const togglePictureInPicture = () => {
@@ -395,10 +435,9 @@ eachEpisodeList.addEventListener('click', async (e) => {
             animeId = episode.split('-')[1]
         }
         listEpisodeOptions.classList.toggle("ep_list_list");
-        video.playThisEpisode(animeId, episodeId);
+        await video.playThisEpisode(animeId, episodeId);
     }
 })
-
 
 /* trigger auto updating episode when the user reaches the 80% of the anime */
 mainVideo.addEventListener('timeupdate', () => {

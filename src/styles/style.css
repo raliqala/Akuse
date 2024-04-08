@@ -367,6 +367,10 @@ aside ul li#nav-user {
   display: none;
 }
 
+#user-icon{
+  object-fit: cover;
+}
+
 aside ul li#nav-login.show-li,
 aside ul li#nav-user.show-li {
   display: flex;
